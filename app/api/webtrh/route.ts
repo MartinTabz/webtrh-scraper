@@ -94,5 +94,33 @@ export async function GET() {
 	}
 
 	// If it is = send notification to Pushover app on my iPhone
-	return new Response("Vše v pořádku", { status: 200 });
+	const params = new URLSearchParams();
+	params.append("token", process.env.PUSHOVER_TOKEN!);
+	params.append("user", process.env.PUSHOVER_USER!);
+	params.append("message", `Někdo poptává: ${latestInquiry}`);
+	params.append("title", "Nová poptávka na WebTrhu!");
+
+	try {
+		const response = await axios.post(
+			"https://api.pushover.net/1/messages.json",
+			params,
+			{
+				headers: { "Content-Type": "application/x-www-form-urlencoded" },
+			}
+		);
+		if (response.status == 200) {
+			return new Response("Vše v pořádku", { status: 200 });
+		} else {
+			return new Response(
+				"Něco se pokazilo při odesílání upozornění do telefonu",
+				{ status: 500 }
+			);
+		}
+	} catch (error) {
+		console.error(error);
+		return new Response(
+			"Něco se pokazilo při odesílání upozornění do telefonu",
+			{ status: 500 }
+		);
+	}
 }
