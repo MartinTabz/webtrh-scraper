@@ -2,6 +2,11 @@ import axios from "axios";
 import { headers } from "next/headers";
 import * as cheerio from "cheerio";
 import { getSupabase } from "@/utils/supabase";
+import OpenAI from "openai";
+
+const openAIClient = new OpenAI({
+	apiKey: process.env.OPENAI_API_KEY,
+});
 
 export async function GET() {
 	const headersList = await headers();
@@ -55,9 +60,39 @@ export async function GET() {
 		return new Response("Vše v pořádku", { status: 200 });
 	}
 
-	// Send the detail to OpenAI to return true or false if its relevant to me
-	// If it is not = end
-	// If it is = send notification to Pushover app on my iPhone
+	const { error: dbUpdateErr } = await supabase
+		.from("values")
+		.update({ value: latestInquiry })
+		.eq("name", "webtrh");
 
+	if (dbUpdateErr) {
+		console.error(dbUpdateErr);
+		return new Response(
+			"Něco se pokazilo při ukládání nejnovější poptávky do databáze",
+			{
+				status: 404,
+			}
+		);
+	}
+
+	// Send the detail to OpenAI to return true or false if its relevant to me
+	const completion = await openAIClient.chat.completions.create({
+		model: "gpt-4o-mini-2024-07-18",
+		messages: [
+			{
+				role: "user",
+				content: `Tvým úkolem bude rozpoznat, jestli název poptávky na freelance stránce je relevantní pro mne, a jestli bych tuto zakázku mohl plnit, nebo ne. Můj popis: Jsem programátor webových stránek (také jako webu) a webových aplikací. Pracuji pouze s NextJS a nepoužívám Wordpress. Jsem full-stack, takže dělám i webdesign. Vyznám se také v technických detailech ohledně webů, domén a podobně. Pokud se v názvu jedná o WordPress, tak pokud je to vytvoření nového webu, tak je to relevantní, ale pokud je to úprava, tak ne. Tvůj práh bude nízko, takže i zakázky, kde není kontext, nebo bych je alespoň trochu mohl plnit označuj relevantní. Tvoje odpověď bude jednoslovná, buďto vrátíš true, nebo false, nic víc nepiš. Název poptávky je: ${latestInquiry}`,
+			},
+		],
+	});
+
+	const isRelevant = completion.choices[0].message.content;
+
+	// If it is not = end
+	if (isRelevant != "true") {
+		return new Response("Vše v pořádku", { status: 200 });
+	}
+
+	// If it is = send notification to Pushover app on my iPhone
 	return new Response("Vše v pořádku", { status: 200 });
 }
