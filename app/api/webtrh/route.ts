@@ -81,12 +81,14 @@ export async function GET() {
 		messages: [
 			{
 				role: "user",
-				content: `Tvým úkolem bude rozpoznat, jestli název poptávky na freelance stránce je relevantní pro mne, a jestli bych tuto zakázku mohl plnit, nebo ne. Můj popis: Jsem programátor webových stránek (také jako webu) a webových aplikací. Pracuji pouze s NextJS a nepoužívám Wordpress. Jsem full-stack, takže dělám i webdesign. Vyznám se také v technických detailech ohledně webů, domén a podobně. Pokud se v názvu jedná o WordPress, tak pokud je to vytvoření nového webu, tak je to relevantní, ale pokud je to úprava, tak ne. Tvůj práh bude nízko, takže i zakázky, kde není kontext, nebo bych je alespoň trochu mohl plnit označuj relevantní. Tvoje odpověď bude jednoslovná, buďto vrátíš true, nebo false, nic víc nepiš. Název poptávky je: ${latestInquiry}`,
+				content: `Tvým úkolem bude rozpoznat, jestli název poptávky na freelance stránce je relevantní pro mne, a jestli bych tuto zakázku mohl plnit, nebo ne. Můj popis: Jsem programátor webových stránek (také jako webu) a webových aplikací. Pracuji pouze s NextJS a nepoužívám Wordpress. Jsem full-stack, takže dělám i webdesign. Vyznám se také v technických detailech ohledně webů, domén a podobně. Pokud se v názvu jedná o WordPress, tak pokud je to vytvoření nového webu, tak je to relevantní, ale pokud je to úprava, tak ne. Pokud se jedná o úpravu nějakého webu, tak je to relevantní. Také umím tvořit e-shopy - programovat, nebo přes Shopify a Shoptet. Tvůj práh bude nízko, takže i zakázky, kde není kontext, nebo bych je alespoň trochu mohl plnit označuj relevantní. Tvoje odpověď bude jednoslovná, buďto vrátíš true, nebo false, nic víc nepiš. Název poptávky je: ${latestInquiry}`,
 			},
 		],
 	});
 
 	const isRelevant = completion.choices[0].message.content;
+
+	console.log(isRelevant);
 
 	// If it is not = end
 	if (isRelevant != "true") {
