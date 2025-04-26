@@ -1,25 +1,21 @@
 import axios from "axios";
-import { headers } from "next/headers";
 import * as cheerio from "cheerio";
-import { getSupabase } from "@/utils/supabase";
 import OpenAI from "openai";
+import { NextRequest, NextResponse } from "next/server";
+import { Redis } from "@upstash/redis";
 
 const openAIClient = new OpenAI({
 	apiKey: process.env.OPENAI_API_KEY,
 });
 
-export async function GET() {
-	const headersList = await headers();
-	const hasAccessKey = headersList.has("accesskey");
+const redis = Redis.fromEnv();
 
-	if (!hasAccessKey) {
-		return new Response("Chybí heslo", { status: 401 });
-	}
-
-	const accessKeyValue = headersList.get("accesskey");
-
-	if (accessKeyValue != process.env.ACCESS_KEY) {
-		return new Response("Heslo není správné", { status: 401 });
+export async function GET(request: NextRequest) {
+	const authHeader = request.headers.get("authorization");
+	if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+		return new NextResponse("Unauthorized", {
+			status: 401,
+		});
 	}
 
 	let latestInquiry: string = "";
@@ -36,44 +32,19 @@ export async function GET() {
 		latestInquiry = title;
 	} catch (error) {
 		console.error(error);
-		return new Response("Něco se pokazilo při fetchování stránky Webtrhu", {
+		return new NextResponse("Něco se pokazilo při fetchování stránky Webtrhu", {
 			status: 500,
 		});
 	}
 
-	// Compare it to the last saved in Supabase database
-	const supabase = getSupabase();
-	const { data: dbData, error: dbErr } = await supabase
-		.from("values")
-		.select("value")
-		.eq("name", "webtrh")
-		.single();
-
-	if (dbErr || !dbData) {
-		return new Response("Nepodařilo se najít poslední poptávku", {
-			status: 404,
-		});
-	}
-
+	// Compare it to the last saved in KV
 	// If it is the same = end
-	if (dbData.value == latestInquiry) {
-		return new Response("Vše v pořádku", { status: 200 });
+	const result = await redis.get("previous");
+	if (result == latestInquiry) {
+		return new NextResponse("Vše v pořádku", { status: 200 });
 	}
 
-	const { error: dbUpdateErr } = await supabase
-		.from("values")
-		.update({ value: latestInquiry })
-		.eq("name", "webtrh");
-
-	if (dbUpdateErr) {
-		console.error(dbUpdateErr);
-		return new Response(
-			"Něco se pokazilo při ukládání nejnovější poptávky do databáze",
-			{
-				status: 404,
-			}
-		);
-	}
+	await redis.set("previous", latestInquiry);
 
 	// Send the detail to OpenAI to return true or false if its relevant to me
 	const completion = await openAIClient.chat.completions.create({
@@ -88,11 +59,14 @@ export async function GET() {
 
 	const isRelevant = completion.choices[0].message.content;
 
-	console.log(isRelevant);
+	console.log(
+		"Odpověď AI na to jestli je to relevantní, nebo ne: ",
+		isRelevant
+	);
 
 	// If it is not = end
 	if (isRelevant != "true") {
-		return new Response("Vše v pořádku", { status: 200 });
+		return new NextResponse("Vše v pořádku", { status: 200 });
 	}
 
 	// If it is = send notification to Pushover app on my iPhone
@@ -111,16 +85,16 @@ export async function GET() {
 			}
 		);
 		if (response.status == 200) {
-			return new Response("Vše v pořádku", { status: 200 });
+			return new NextResponse("Vše v pořádku", { status: 200 });
 		} else {
-			return new Response(
+			return new NextResponse(
 				"Něco se pokazilo při odesílání upozornění do telefonu",
 				{ status: 500 }
 			);
 		}
 	} catch (error) {
 		console.error(error);
-		return new Response(
+		return new NextResponse(
 			"Něco se pokazilo při odesílání upozornění do telefonu",
 			{ status: 500 }
 		);
