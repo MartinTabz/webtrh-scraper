@@ -1,36 +1,12 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+## WebTrh Scraper
 
-## Getting Started
+Tato jednoduchá NextJS aplikace má za úkol hlídat nově přidané poptávky na WebTrh, a pokud je poptávka relevantní, tak se pošle upozornění na mobil do aplikace Pushover.
 
-First, run the development server:
+### Technologie
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
-
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
-
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
-
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- Vercel CRON jobs - každé 2 minuty odešlě dotaz na API route (s klíčem)
+- Axios - získá HTML stránky s poptávkami
+- Cheerio - zpracuje HTML a získá hodnotu nejnovější poptávky 
+- Redis KV - pro ukládání poslední poptávky, která se poté porovnává
+- OpenAI API - pokud byla přidána nová poptávka (poslední uložení v Redis KV se nerovná aktuální nalezené), tak se název pošle gpt 4o mini modelu, který vrátí "true" nebo "false" na základě promptu, který určuje jaké zakázky jsou relevantní
+- Pushover - pokud je nová poptávka relevantní tak se pomocí Axiosu pošle API request pro odeslání upozornění do emailu
